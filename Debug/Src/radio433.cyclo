@@ -1,0 +1,9 @@
+../Src/radio433.c:52:6:radio433_receiverInit	1
+../Src/radio433.c:84:6:radio433_receiverAttachGPIO	1
+../Src/radio433.c:98:10:_radio433_pullData	1
+../Src/radio433.c:104:10:_radio433_pushData	1
+../Src/radio433.c:115:10:radio433_receiverReadDataCheck	2
+../Src/radio433.c:145:6:radio433_receiverCallbackEXTI	8
+../Src/radio433.c:218:6:radio433_transmitterInit	1
+../Src/radio433.c:242:6:radio433_transmitterAttachGPIOandTimer	2
+../Src/radio433.c:258:6:radio433_transmitterSendData	7
