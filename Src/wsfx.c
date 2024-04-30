@@ -261,7 +261,7 @@ void wsfx_step_hueChange(wsfxEffectFlow_TypeDef *flow) {
 
 void wsfx_step_pulse(wsfxEffectFlow_TypeDef *flow) {
 
-	flow->steps = 50;
+	flow->steps = 20;
 
 	uint8_t actualValue = 0;
 
@@ -273,7 +273,7 @@ void wsfx_step_pulse(wsfxEffectFlow_TypeDef *flow) {
 	else if (flow->counter == 5) {
 		actualValue = flow->value;
 	} else {
-		actualValue = flow->value / flow->counter;
+		actualValue = flow->value / (flow->counter *2);
 	}
 
 	_groupAction(flow->stripe, flow->beginLED, flow->endLED, flow->hue,
@@ -425,6 +425,31 @@ void wsfx_step_warp(wsfxEffectFlow_TypeDef *flow) {
 	int currentLED1, currentLED2;
 
 	_groupTurnOff(flow->stripe, flow->beginLED, flow->endLED);
+
+	currentLED1 = flow->beginLED + flow->counter;
+	currentLED2 = flow->endLED - flow->counter;
+
+	WS2812B_setLedColorHSV(flow->stripe, currentLED1, flow->hue,
+			flow->saturation, flow->value / 4);
+	WS2812B_setLedColorHSV(flow->stripe, currentLED2, flow->hue,
+			flow->saturation, flow->value / 4);
+
+	WS2812B_Refresh(flow->stripe);
+
+}
+
+void wsfx_step_warpHalf(wsfxEffectFlow_TypeDef *flow) {
+
+	int leds = flow->endLED - flow->beginLED + 1;
+
+	flow->steps = (leds) / 2 /2;
+
+	int currentLED1, currentLED2;
+
+	_groupTurnOff(flow->stripe, flow->beginLED, flow->beginLED + flow->steps);
+	_groupTurnOff(flow->stripe, flow->endLED - flow->steps, flow->endLED);
+
+
 	currentLED1 = flow->beginLED + flow->counter;
 	currentLED2 = flow->endLED - flow->counter;
 

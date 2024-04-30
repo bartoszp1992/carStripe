@@ -52,7 +52,7 @@
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-extern void carStripeReadButton(void);
+extern void carStripeResetWaitingForCommand(void);
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -125,7 +125,7 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-	carStripeReadButton();
+	carStripeResetWaitingForCommand();
 	wsfx_interruptCallback();
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();

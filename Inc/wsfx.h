@@ -103,5 +103,6 @@ void wsfx_step_flyingLight(wsfxEffectFlow_TypeDef *flow);
 void wsfx_step_starting(wsfxEffectFlow_TypeDef *flow);
 void wsfx_step_constantColor(wsfxEffectFlow_TypeDef *flow);
 void wsfx_step_warp(wsfxEffectFlow_TypeDef *flow);
+void wsfx_step_warpHalf(wsfxEffectFlow_TypeDef *flow);
 
 #endif /* WSFX_H_ */

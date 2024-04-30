@@ -21,3 +21,4 @@
 ../Src/wsfx.c:356:6:wsfx_step_starting	64	static
 ../Src/wsfx.c:408:6:wsfx_step_constantColor	32	static
 ../Src/wsfx.c:419:6:wsfx_step_warp	48	static
+../Src/wsfx.c:441:6:wsfx_step_warpHalf	48	static

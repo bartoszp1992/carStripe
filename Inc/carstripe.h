@@ -13,8 +13,8 @@
 #include "wsfx.h"
 #include "radio433.h"
 
-#define CAR_STRIPE_EFFECTS 6
-#define CAR_STRIPE_LEDS_COUNTER 8
+#define CAR_STRIPE_EFFECTS 7
+#define CAR_STRIPE_LEDS_COUNTER 117
 
 void carStripe(void);
 

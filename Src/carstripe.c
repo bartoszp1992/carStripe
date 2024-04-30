@@ -16,62 +16,78 @@
 ws2812_Stripe_TypeDef stripe1;
 
 wsfxEffect_TypeDef fxKnight;
-wsfxEffect_TypeDef fxHue;
+wsfxEffect_TypeDef fxGlow;
 wsfxEffect_TypeDef fxPulse;
 wsfxEffect_TypeDef fxBlinker;
 wsfxEffect_TypeDef fxStarting;
 wsfxEffect_TypeDef fxWarp;
+wsfxEffect_TypeDef fxHueChange;
 
 radio433_receiverTypeDef radio;
 radio433_transmitterTypeDef remote;
 //radio433_transmitterTypeDef transmitter;
 
-void carStripeReadButton(void);
-uint32_t carStripeButtonReadPrescaler = 200;
-uint32_t carStripeButtonReadMasterCounter;
 uint32_t carStripeButtonData;
-uint8_t carStripeEffectNumber;
+int8_t carStripeEffectNumber = 0;
 uint16_t carStripeColor;
 uint8_t carStripeStartFlag = 0;
 uint8_t carStripeStopFlag = 0;
+uint8_t carStripeCommand = 0;
+volatile uint16_t carStripeCommandResetCounter = 0;
+volatile uint16_t carStripeCommandResetTime = 5000;
 wsfxEffect_TypeDef *carStripeCurrentFx;
+
+
+void carStripeResetWaitingForCommand(void);
 
 void carStripe(void) {
 
 	//initialize LED stripe
 	WS2812B_init(&stripe1, &hspi1, 118);
 
-	//initialize and config kreffect
+	wsfx_init(&fxHueChange, &stripe1, 0, CAR_STRIPE_LEDS_COUNTER,
+			wsfx_step_hueChange);
+	wsfx_setValue(&fxHueChange, 255);
+	wsfx_setPrescaler(&fxHueChange, 1);
+	wsfx_setRepeat(&fxHueChange, WSFX_REPEAT_MODE_ON);
+	wsfx_setSaturation(&fxHueChange, 230);
+
 	wsfx_init(&fxKnight, &stripe1, 52, 66, wsfx_step_movingLight);
 	wsfx_setColor(&fxKnight, 0);
 	wsfx_setValue(&fxKnight, 255);
 	wsfx_setPrescaler(&fxKnight, 50);
 	wsfx_setRepeat(&fxKnight, WSFX_REPEAT_MODE_ON);
 
-	wsfx_init(&fxHue, &stripe1, 0, 117, wsfx_step_hueChange);
-	wsfx_setValue(&fxHue, 255);
-	wsfx_setPrescaler(&fxHue, 1);
+	wsfx_init(&fxGlow, &stripe1, 0, CAR_STRIPE_LEDS_COUNTER,
+			wsfx_step_constantColor);
+	wsfx_setValue(&fxGlow, 255);
+	wsfx_setPrescaler(&fxGlow, 1);
+	wsfx_setRepeat(&fxGlow, WSFX_REPEAT_MODE_ON);
+	wsfx_setSaturation(&fxGlow, 220);
 
-	wsfx_init(&fxPulse, &stripe1, 0, 117, wsfx_step_pulse);
+	wsfx_init(&fxPulse, &stripe1, 0, CAR_STRIPE_LEDS_COUNTER, wsfx_step_pulse);
 	wsfx_setValue(&fxPulse, 255);
 	wsfx_setSaturation(&fxPulse, 80);
 	wsfx_setColor(&fxPulse, 240);
 	wsfx_setPrescaler(&fxPulse, 1);
 
-	wsfx_init(&fxBlinker, &stripe1, 0, 117, wsfx_step_blinker);
+	wsfx_init(&fxBlinker, &stripe1, 0, CAR_STRIPE_LEDS_COUNTER,
+			wsfx_step_blinker);
 	wsfx_setPrescaler(&fxBlinker, 30);
 	wsfx_setValue(&fxBlinker, 255);
 	wsfx_setColor(&fxBlinker, 0);
 	wsfx_setColorSecond(&fxBlinker, 240);
 	wsfx_setSaturation(&fxBlinker, 255);
 
-	wsfx_init(&fxStarting, &stripe1, 0, 117, wsfx_step_starting);
+	wsfx_init(&fxStarting, &stripe1, 0, CAR_STRIPE_LEDS_COUNTER,
+			wsfx_step_starting);
 	wsfx_setPrescaler(&fxStarting, 1);
 	wsfx_setValue(&fxStarting, 255);
 	wsfx_setSaturation(&fxStarting, 50);
 	wsfx_setColor(&fxStarting, 240);
 
-	wsfx_init(&fxWarp, &stripe1, 0, 117, wsfx_step_warp);
+	wsfx_init(&fxWarp, &stripe1, 0, CAR_STRIPE_LEDS_COUNTER,
+			wsfx_step_warpHalf);
 	wsfx_setPrescaler(&fxWarp, 2);
 	wsfx_setValue(&fxWarp, 255);
 	wsfx_setSaturation(&fxWarp, 0);
@@ -97,71 +113,84 @@ void carStripe(void) {
 	//	radio433_transmitterAttachGPIOandTimer(&transmitter, RADIO_TX_GPIO_Port,
 	//	RADIO_TX_Pin, &htim17);
 
-	carStripeEffectNumber = 3;
-
 	while (1) {
+
+		carStripeButtonData = radio433_receiverReadDataCheck(&radio, &remote);
 
 		if (carStripeButtonData == RADIO433_BARTS_BUTTON_D) {
 
-			if (carStripeCurrentFx->flow.repeat == WSFX_REPEAT_MODE_ON
-					&& carStripeCurrentFx->flow.state
-							== WSFX_EFFECT_STATE_RUNNING) {//dont allow change if running
-
-			} else {
-				carStripeButtonReadPrescaler = 200;
-
-				carStripeEffectNumber++;
-
-				if (carStripeEffectNumber > CAR_STRIPE_EFFECTS)
-					carStripeEffectNumber = 0;
-
-			}
+			if (carStripeCommand == 0)
+				carStripeCommand = 1;
 
 		}
 
 		if (carStripeButtonData == RADIO433_BARTS_BUTTON_C) {
 
-			carStripeButtonReadPrescaler = 1;
+//			carStripeButtonReadPrescaler = 1;
 
-			carStripeColor += 2;
+			carStripeColor += 4;
 
 			if (carStripeColor >= 360)
 				carStripeColor = 0;
 
 			wsfx_setColor(&fxKnight, carStripeColor);
+			wsfx_setColor(&fxGlow, carStripeColor);
 
 		}
 
 		if (carStripeButtonData == RADIO433_BARTS_BUTTON_B) {
 
-			carStripeStopFlag = 1;
+			if (carStripeCommand) {
+				wsfx_stop(carStripeCurrentFx);
+				carStripeEffectNumber++;
+				if (carStripeEffectNumber > CAR_STRIPE_EFFECTS)
+					carStripeEffectNumber = CAR_STRIPE_EFFECTS;
+
+				carStripeCommand = 0;
+
+			} else {
+				carStripeStopFlag = 1;
+			}
 
 		}
 
 		if (carStripeButtonData == RADIO433_BARTS_BUTTON_A) {
 
-			carStripeStartFlag = 1;
+			if (carStripeCommand) {
+				wsfx_stop(carStripeCurrentFx);
+				carStripeEffectNumber--;
+				if (carStripeEffectNumber < 0)
+					carStripeEffectNumber = 0;
+
+				carStripeCommand = 0;
+
+			} else {
+				carStripeStartFlag = 1;
+			}
 
 		}
 
 		switch (carStripeEffectNumber) {
 		case 0:
-			carStripeCurrentFx = &fxStarting;
-			break;
-		case 1:
-			carStripeCurrentFx = &fxHue;
-			break;
-		case 2:
 			carStripeCurrentFx = &fxPulse;
 			break;
-		case 3:
+		case 1:
 			carStripeCurrentFx = &fxKnight;
 			break;
+		case 2:
+			carStripeCurrentFx = &fxStarting;
+			break;
+		case 3:
+			carStripeCurrentFx = &fxWarp;
+			break;
 		case 4:
-			carStripeCurrentFx = &fxBlinker;
+			carStripeCurrentFx = &fxGlow;
 			break;
 		case 5:
-			carStripeCurrentFx = &fxWarp;
+			carStripeCurrentFx = &fxHueChange;
+			break;
+		case 6:
+			carStripeCurrentFx = &fxBlinker;
 			break;
 		}
 
@@ -178,28 +207,28 @@ void carStripe(void) {
 
 		carStripeButtonData = 0;
 
-		wsfx_increment(6, &fxKnight, &fxHue, &fxPulse, &fxBlinker, &fxStarting,
-				&fxWarp);
+		wsfx_increment(7, &fxKnight, &fxGlow, &fxPulse, &fxBlinker, &fxStarting,
+				&fxWarp, &fxHueChange);
 
 	}
 
 }
-void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin){
+void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
 	radio433_receiverCallbackEXTI(&radio, GPIO_Pin);
 }
 
-
-void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin){
+void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
 	radio433_receiverCallbackEXTI(&radio, GPIO_Pin);
 }
 
+void carStripeResetWaitingForCommand(void) {
 
-void carStripeReadButton(void) {
+	if (carStripeCommand) {
+		carStripeCommandResetCounter++;
+		if (carStripeCommandResetCounter > carStripeCommandResetTime){
+			carStripeCommand = 0;
+			carStripeCommandResetCounter = 0;
+		}
 
-	if (carStripeButtonReadMasterCounter % carStripeButtonReadPrescaler == 0) {
-		carStripeButtonData = radio433_receiverReadDataCheck(&radio, &remote);
 	}
-
-	carStripeButtonReadMasterCounter++;
 }
-
