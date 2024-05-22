@@ -4,26 +4,44 @@
  *  Created on: Apr 19, 2024
  *      Author: bartosz
  *
- *      library to handle 433 ASK receivers, transmitters and remotes
+ *      library to handle 433 ASK receivers, transmitters and
+ *      remotes with PWM modulation
  *
- *      note:
- *      set timer prescaler for counting to RADIO433_BIT_TIME in 1,6ms(example)
- *     	!!set arr to max
+ *      A. short implementation manual:
  *
- *     	example for 32MHz timer CLK:
- *     	ARR- 65535
- *     	PSC- 255
+ *      -> set timer prescaler:
+ *      	timer must counting to RADIO433_CNT_BIT_TIME in desired bit
+ *      	time(typical 1.6ms)
  *
- *     	example for 64MHz timer CLK:
- *     	ARR- 65535
- *     	PSC- 511
+ *      	example:
+ *      	tim CLK = 64M
+ *      	tim PSC = 512
+ *      	CNT_BIT_TIME = 200
+ *      	f(incrementing) = CLK/PSC = 125k
+ *      	data rate = f/CNT_BIT_TIME = 625kHz
+ *      	bit time = 1000ms/data rate = 1,6ms
  *
- *		set proper RADIO433_CNT values!
  *
- *		set rxPin as EXTI_INPUT with rising/falling detection
+ *      	set timer CP to max possible value
  *
- *		1527 frame description
+ *		-> you can also modify CNT values if needed
  *
+ *		-> set rxPin as EXTI_INPUT with rising/falling detection
+ *
+ *		-> Run radio433_receiverCallbackEXTI in both - rising
+ *			and falling callbacks
+ *
+ *		-> Create structures for receiver, remote and transmitter
+ *			you need to create structure also for remote - it will be used in
+ *			frame comparing trough reading data
+ *
+ *		-> Initialize structures:
+ *			dont attach GPIO and timer for remote- its
+ *			used only for transmitter
+ *
+ *
+ *
+ *		B. 1527 frame description
  *		0		1	2	3	4	5	6	7	8	9	10	11	12	13	14	15	16	17	18	19	20	21	22	23	24
  *		|beg(H)	|id of transmitter															|B1	|B2	|B3	|B4	|end(L)|
  *
@@ -31,7 +49,7 @@
  *		L- logical low, short pulse
  *		B0-B3- buttons (H- pressed, L- unpressed)
  *
- *		BARTS frame description
+ *		C. BARTS frame description
  *		|24bit id | 8bit data | or
  *		|24bit id | 4bit additional data | 4bit button data(pressed low)|
  *
@@ -49,17 +67,17 @@
  * @param: right shift for data from transmitter(1 for 1527 coding)
  * @param: bit mask for data from transmitter(0xf for 1527 encoding)
  */
-void radio433_receiverInit(radio433_receiverTypeDef *radio,
-		TIM_HandleTypeDef *timer, uint8_t frameLength, uint8_t idShift,
-		uint32_t idBitMask, uint8_t dataShift, uint32_t dataBitMask) {
+void radio433_receiverInit(radio433_receiverTypeDef *radio, uint8_t frameLength,
+		uint8_t idShift, uint32_t idBitMask, uint8_t dataShift,
+		uint32_t dataBitMask) {
 
-	radio->timer = timer;
 	radio->frameLength = frameLength;
 
 	radio->rxDataFrame = 0;
 
 	radio->rxPort = RADIO433_UNDEFINED;
 	radio->rxPin = RADIO433_UNDEFINED;
+	radio->timer = RADIO433_UNDEFINED;
 
 	radio->actualReceivingBit = 0;
 
@@ -71,8 +89,6 @@ void radio433_receiverInit(radio433_receiverTypeDef *radio,
 
 	radio->skippingReceivedCounter = 0;
 
-	HAL_TIM_Base_Start(radio->timer);
-
 }
 
 /*
@@ -81,28 +97,24 @@ void radio433_receiverInit(radio433_receiverTypeDef *radio,
  * @param: port
  * @param: pin
  */
-void radio433_receiverAttachGPIO(radio433_receiverTypeDef *radio,
-		GPIO_TypeDef *port, uint16_t pin) {
+void radio433_receiverAttach(radio433_receiverTypeDef *radio,
+		GPIO_TypeDef *port, uint16_t pin, TIM_HandleTypeDef *timer) {
 	radio->rxPort = port;
 	radio->rxPin = pin;
+	radio->timer = timer;
+
+	HAL_TIM_Base_Start(timer);
 }
 
-#if RADIO433_RECEIVING_LED == 1
-void radio433_receiverAttachRxLED(radio433_receiverTypeDef *radio,
-		GPIO_TypeDef *port, uint16_t pin) {
-	radio->rxLEDPort = port;
-	radio->rxLEDPin = pin;
-}
-#endif
-
-uint32_t _radio433_pullData(uint32_t dataFrame, uint8_t shift, uint32_t bitMask) {
+static uint32_t _radio433_pullData(uint32_t dataFrame, uint8_t shift,
+		uint32_t bitMask) {
 
 	return (dataFrame >> shift) & bitMask;
 
 }
 
-uint32_t _radio433_pushData(uint32_t data, uint8_t dataShift, uint32_t id,
-		uint8_t idShift) {
+static uint32_t _radio433_pushData(uint32_t data, uint8_t dataShift,
+		uint32_t id, uint8_t idShift) {
 	return (data << dataShift | id << idShift);
 }
 
@@ -110,9 +122,9 @@ uint32_t _radio433_pushData(uint32_t data, uint8_t dataShift, uint32_t id,
  * returns received data and clear it if id of radios are identical
  * @param: radio struct
  * @param: transmitter struct(for compare id)
- * @retval: data or RADIO433_ERR(if transmitter havent matched id)
+ * @retval: data or 0
  */
-uint32_t radio433_receiverReadDataCheck(radio433_receiverTypeDef *radio,
+uint32_t radio433_receiverReadData(radio433_receiverTypeDef *radio,
 		radio433_transmitterTypeDef *transmitter) {
 
 	uint32_t retval;
@@ -145,7 +157,9 @@ uint32_t radio433_receiverReadDataCheck(radio433_receiverTypeDef *radio,
 void radio433_receiverCallbackEXTI(radio433_receiverTypeDef *radio,
 		uint16_t pin) {
 
-	if (pin == radio->rxPin) {
+	if (pin == radio->rxPin && radio->timer != RADIO433_UNDEFINED) {
+
+
 
 		if (HAL_GPIO_ReadPin(radio->rxPort, radio->rxPin) == GPIO_PIN_SET) { // rising edge
 
@@ -153,10 +167,6 @@ void radio433_receiverCallbackEXTI(radio433_receiverTypeDef *radio,
 					> RADIO433_CNT_FRAME_INTERVAL_TRESHOLD) {
 				radio->actualReceivingBit = 0;
 
-#if RADIO433_RECEIVING_LED == 1
-				HAL_GPIO_WritePin(radio->rxLEDPort, radio->rxLEDPin,
-						GPIO_PIN_SET);
-#endif
 			}
 			radio->timer->Instance->CNT = 0;
 
@@ -192,16 +202,8 @@ void radio433_receiverCallbackEXTI(radio433_receiverTypeDef *radio,
 							radio->dataShift, radio->dataBitMask);
 
 				}
-
-#if RADIO433_RECEIVING_LED == 1
-				HAL_GPIO_WritePin(radio->rxLEDPort, radio->rxLEDPin,
-						GPIO_PIN_RESET);
-#endif
-
 			}
-
 		}
-
 	}
 }
 
@@ -226,6 +228,7 @@ void radio433_transmitterInit(radio433_transmitterTypeDef *transmitter,
 
 	transmitter->txPort = RADIO433_UNDEFINED;
 	transmitter->txPin = RADIO433_UNDEFINED;
+	transmitter->timer = RADIO433_UNDEFINED;
 
 	transmitter->idShift = idShift;
 	transmitter->dataShift = dataShift;
@@ -239,16 +242,14 @@ void radio433_transmitterInit(radio433_transmitterTypeDef *transmitter,
  * attach GPIO and timer to transmitter
  * dont use in remote.
  */
-void radio433_transmitterAttachGPIOandTimer(
-		radio433_transmitterTypeDef *transmitter, GPIO_TypeDef *port,
-		uint16_t pin, TIM_HandleTypeDef *timer) {
+void radio433_transmitterAttach(radio433_transmitterTypeDef *transmitter,
+		GPIO_TypeDef *port, uint16_t pin, TIM_HandleTypeDef *timer) {
 
 	transmitter->txPort = port;
 	transmitter->txPin = pin;
 	transmitter->timer = timer;
 
-	if (transmitter->timer->State != HAL_TIM_STATE_BUSY)
-		HAL_TIM_Base_Start(transmitter->timer);
+	HAL_TIM_Base_Start(timer);
 
 }
 
@@ -258,38 +259,40 @@ void radio433_transmitterAttachGPIOandTimer(
 void radio433_transmitterSendData(radio433_transmitterTypeDef *transmitter,
 		uint32_t data) {
 
-	transmitter->data = data;
+	if (transmitter->timer != RADIO433_UNDEFINED) {
+		transmitter->data = data;
 
-	transmitter->txDataFrame = _radio433_pushData(transmitter->data,
-			transmitter->dataShift, transmitter->id, transmitter->idShift);
+		transmitter->txDataFrame = _radio433_pushData(transmitter->data,
+				transmitter->dataShift, transmitter->id, transmitter->idShift);
 
-	//start frame
-	for (uint8_t i = 0; i < transmitter->frameLength; i++) { //repeat for each bit
+		//start frame
+		for (uint8_t i = 0; i < transmitter->frameLength; i++) { //repeat for each bit
 
-		HAL_GPIO_WritePin(transmitter->txPort, transmitter->txPin,
-				GPIO_PIN_SET); //set bit H
-		transmitter->timer->Instance->CNT = 0; //reset timer
+			HAL_GPIO_WritePin(transmitter->txPort, transmitter->txPin,
+					GPIO_PIN_SET); //set bit H
+			transmitter->timer->Instance->CNT = 0; //reset timer
 
-		if (transmitter->txDataFrame >> (transmitter->frameLength - 1 - i)
-				& 1) { //high bit
-			while (transmitter->timer->Instance->CNT < RADIO433_CNT_BIT_H)
-				; //wait for counting high state
+			if (transmitter->txDataFrame >> (transmitter->frameLength - 1 - i)
+					& 1) { //high bit
+				while (transmitter->timer->Instance->CNT < RADIO433_CNT_BIT_H)
+					; //wait for counting high state
 
-		} else { //low bit
-			while (transmitter->timer->Instance->CNT < RADIO433_CNT_BIT_L)
-				; //wait for counting low state
+			} else { //low bit
+				while (transmitter->timer->Instance->CNT < RADIO433_CNT_BIT_L)
+					; //wait for counting low state
+			}
+
+			HAL_GPIO_WritePin(transmitter->txPort, transmitter->txPin,
+					GPIO_PIN_RESET); //reset pin
+			while (transmitter->timer->Instance->CNT < RADIO433_CNT_BIT_TIME)
+				; //wait for counting to bit end
+
 		}
 
-		HAL_GPIO_WritePin(transmitter->txPort, transmitter->txPin,
-				GPIO_PIN_RESET); //reset pin
-		while (transmitter->timer->Instance->CNT < RADIO433_CNT_BIT_TIME)
-			; //wait for counting to bit end
-
+		//reset
+		transmitter->timer->Instance->CNT = 0; //reset timer
+		while (transmitter->timer->Instance->CNT < RADIO433_CNT_FRAME_INTERVAL)
+			;
 	}
-
-	//reset
-	transmitter->timer->Instance->CNT = 0; //reset timer
-	while (transmitter->timer->Instance->CNT < RADIO433_CNT_FRAME_INTERVAL)
-		;
 
 }

@@ -14,11 +14,6 @@
 #include "tim.h"
 
 /*
- * receiving LED
- */
-#define RADIO433_RECEIVING_LED 0
-
-/*
  * CNT time for whole bit
  */
 #define RADIO433_CNT_BIT_TIME 199
@@ -43,7 +38,6 @@
  * CNT TIME used for frame separation while transmitting
  */
 #define RADIO433_CNT_FRAME_INTERVAL 1500
-
 
 /*
  * used for initialize not used Port/Pin before attachGPIO.
@@ -72,8 +66,6 @@
 
 #define RADIO433_BARTS_FRAMELENGTH 32
 
-
-
 /*
  * 1527 STANDARD
  */
@@ -100,8 +92,8 @@ typedef struct {
 
 	volatile uint32_t txDataFrame;  //overall rxData frame
 
-	uint32_t id;
-	uint32_t data;
+	volatile uint32_t id;
+	volatile uint32_t data;
 
 	GPIO_TypeDef *txPort;
 	uint16_t txPin;
@@ -118,26 +110,19 @@ typedef struct {
 	uint32_t idBitMask;
 	uint32_t dataBitMask;
 
+
 } radio433_transmitterTypeDef;
 
 typedef struct {
 
 	TIM_HandleTypeDef *timer;
+
 	uint8_t frameLength;
 
 	volatile uint32_t rxDataFrame;  //overall rxData frame
 
 	GPIO_TypeDef *rxPort;
 	uint16_t rxPin;
-
-#if RADIO433_RECEIVING_LED == 1
-
-	GPIO_TypeDef *rxLEDPort;
-	uint16_t rxLEDPin;
-
-#endif
-
-
 
 	volatile uint8_t actualReceivingBit; //used for bit counting trough receiving frame and detecting IDLE
 
@@ -166,33 +151,29 @@ typedef struct {
 
 } radio433_receiverTypeDef;
 
-void radio433_receiverInit(radio433_receiverTypeDef *radio,
-		TIM_HandleTypeDef *timer, uint8_t frameLength, uint8_t idShift,
+void radio433_receiverInit(radio433_receiverTypeDef *radio, uint8_t frameLength, uint8_t idShift,
 		uint32_t idBitMask, uint8_t dataShift, uint32_t dataBitMask);
 
-void radio433_receiverAttachGPIO(radio433_receiverTypeDef *radio,
-		GPIO_TypeDef *port, uint16_t pin);
+void radio433_receiverAttach(radio433_receiverTypeDef *radio,
+		GPIO_TypeDef *port, uint16_t pin, TIM_HandleTypeDef *timer);
 
-#if RADIO433_RECEIVING_LED == 1
-void radio433_receiverAttachRxLED(radio433_receiverTypeDef *radio,
-		GPIO_TypeDef *port, uint16_t pin);
-#endif
-
-uint32_t radio433_receiverReadDataCheck(radio433_receiverTypeDef *radio,
+uint32_t radio433_receiverReadData(radio433_receiverTypeDef *radio,
 		radio433_transmitterTypeDef *transmitter);
 
 void radio433_receiverCallbackEXTI(radio433_receiverTypeDef *radio,
 		uint16_t pin);
 
+
 void radio433_transmitterInit(radio433_transmitterTypeDef *transmitter,
 		uint32_t id, uint8_t frameLength, uint8_t idShift, uint32_t idBitMask,
 		uint8_t dataShift, uint32_t dataBitMask);
 
-void radio433_transmitterAttachGPIOandTimer(
+void radio433_transmitterAttach(
 		radio433_transmitterTypeDef *transmitter, GPIO_TypeDef *port,
 		uint16_t pin, TIM_HandleTypeDef *timer);
 
 void radio433_transmitterSendData(radio433_transmitterTypeDef *transmitter,
 		uint32_t data);
+
 
 #endif /* RADIO433_H_ */

@@ -14,7 +14,7 @@
 #include "radio433.h"
 
 #define CAR_STRIPE_EFFECTS 7
-#define CAR_STRIPE_LEDS_COUNTER 117
+#define CAR_STRIPE_LAST_LED 96
 
 void carStripe(void);
 

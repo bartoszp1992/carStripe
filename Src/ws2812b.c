@@ -17,7 +17,7 @@
 
 #include "ws2812b.h"
 
-void _WS2812B_bitsToBytes(uint8_t *destination, uint8_t *source,
+static void _WS2812B_bitsToBytes(uint8_t *destination, uint8_t *source,
 		uint16_t sourceSize, uint16_t rightShift, uint8_t high, int8_t low);
 
 void WS2812B_init(ws2812_Stripe_TypeDef *stripe, SPI_HandleTypeDef *spi,

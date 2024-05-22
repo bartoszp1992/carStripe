@@ -43,35 +43,35 @@ void carStripeResetWaitingForCommand(void);
 void carStripe(void) {
 
 	//initialize LED stripe
-	WS2812B_init(&stripe1, &hspi1, 118);
+	WS2812B_init(&stripe1, &hspi1, CAR_STRIPE_LAST_LED);
 
-	wsfx_init(&fxHueChange, &stripe1, 0, CAR_STRIPE_LEDS_COUNTER,
+	wsfx_init(&fxHueChange, &stripe1, 0, CAR_STRIPE_LAST_LED,
 			wsfx_step_hueChange);
 	wsfx_setValue(&fxHueChange, 255);
 	wsfx_setPrescaler(&fxHueChange, 1);
 	wsfx_setRepeat(&fxHueChange, WSFX_REPEAT_MODE_ON);
 	wsfx_setSaturation(&fxHueChange, 230);
 
-	wsfx_init(&fxKnight, &stripe1, 52, 66, wsfx_step_movingLight);
+	wsfx_init(&fxKnight, &stripe1, 41, 55, wsfx_step_movingLight);
 	wsfx_setColor(&fxKnight, 0);
 	wsfx_setValue(&fxKnight, 255);
 	wsfx_setPrescaler(&fxKnight, 50);
 	wsfx_setRepeat(&fxKnight, WSFX_REPEAT_MODE_ON);
 
-	wsfx_init(&fxGlow, &stripe1, 0, CAR_STRIPE_LEDS_COUNTER,
+	wsfx_init(&fxGlow, &stripe1, 0, CAR_STRIPE_LAST_LED,
 			wsfx_step_constantColor);
 	wsfx_setValue(&fxGlow, 255);
 	wsfx_setPrescaler(&fxGlow, 1);
 	wsfx_setRepeat(&fxGlow, WSFX_REPEAT_MODE_ON);
 	wsfx_setSaturation(&fxGlow, 220);
 
-	wsfx_init(&fxPulse, &stripe1, 0, CAR_STRIPE_LEDS_COUNTER, wsfx_step_pulse);
+	wsfx_init(&fxPulse, &stripe1, 0, CAR_STRIPE_LAST_LED, wsfx_step_pulse);
 	wsfx_setValue(&fxPulse, 255);
 	wsfx_setSaturation(&fxPulse, 80);
 	wsfx_setColor(&fxPulse, 240);
 	wsfx_setPrescaler(&fxPulse, 1);
 
-	wsfx_init(&fxBlinker, &stripe1, 0, CAR_STRIPE_LEDS_COUNTER,
+	wsfx_init(&fxBlinker, &stripe1, 0, CAR_STRIPE_LAST_LED,
 			wsfx_step_blinker);
 	wsfx_setPrescaler(&fxBlinker, 30);
 	wsfx_setValue(&fxBlinker, 255);
@@ -79,14 +79,15 @@ void carStripe(void) {
 	wsfx_setColorSecond(&fxBlinker, 240);
 	wsfx_setSaturation(&fxBlinker, 255);
 
-	wsfx_init(&fxStarting, &stripe1, 0, CAR_STRIPE_LEDS_COUNTER,
+
+	wsfx_init(&fxStarting, &stripe1, 0, CAR_STRIPE_LAST_LED,
 			wsfx_step_starting);
 	wsfx_setPrescaler(&fxStarting, 1);
 	wsfx_setValue(&fxStarting, 255);
 	wsfx_setSaturation(&fxStarting, 50);
 	wsfx_setColor(&fxStarting, 240);
 
-	wsfx_init(&fxWarp, &stripe1, 0, CAR_STRIPE_LEDS_COUNTER,
+	wsfx_init(&fxWarp, &stripe1, 0, CAR_STRIPE_LAST_LED,
 			wsfx_step_warpHalf);
 	wsfx_setPrescaler(&fxWarp, 2);
 	wsfx_setValue(&fxWarp, 255);
@@ -94,12 +95,12 @@ void carStripe(void) {
 	wsfx_setRepeat(&fxWarp, WSFX_REPEAT_MODE_ON);
 
 	//init receiver
-	radio433_receiverInit(&radio, &htim16, RADIO433_BARTS_FRAMELENGTH,
+	radio433_receiverInit(&radio, RADIO433_BARTS_FRAMELENGTH,
 	RADIO433_BARTS_ID_SHIFT,
 	RADIO433_BARTS_ID_MASK, RADIO433_BARTS_DATA_SHIFT,
 	RADIO433_BARTS_DATA_MASK);
 	//attach pin for receiver
-	radio433_receiverAttachGPIO(&radio, RADIO_RX_GPIO_Port, RADIO_RX_Pin);
+	radio433_receiverAttach(&radio, RADIO_RX_GPIO_Port, RADIO_RX_Pin, &htim16);
 
 	//init remote
 	radio433_transmitterInit(&remote, 14854373, RADIO433_BARTS_FRAMELENGTH,
@@ -115,7 +116,7 @@ void carStripe(void) {
 
 	while (1) {
 
-		carStripeButtonData = radio433_receiverReadDataCheck(&radio, &remote);
+		carStripeButtonData = radio433_receiverReadData(&radio, &remote);
 
 		if (carStripeButtonData == RADIO433_BARTS_BUTTON_D) {
 
