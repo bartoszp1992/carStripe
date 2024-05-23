@@ -42,6 +42,8 @@ typedef struct{
 	//stores max steps. counted by effect function only!
 	uint16_t steps;
 
+	uint16_t shift;
+
 	uint16_t hue;
 	uint16_t hue2;
 
@@ -87,6 +89,7 @@ void wsfx_setRepeat(wsfxEffect_TypeDef *effect, wsfxRepeatMode repeat);
 void wsfx_setDirection(wsfxEffect_TypeDef *effect, wsfxDirection direction);
 void wsfx_setPrescaler(wsfxEffect_TypeDef *effect, uint16_t prescaler);
 void wsfx_setSaturation(wsfxEffect_TypeDef *effect, uint8_t saturation);
+void wsfx_setShift(wsfxEffect_TypeDef *effect, uint16_t shift);
 void wsfx_setColorSecond(wsfxEffect_TypeDef *effect, uint16_t hue);
 
 
@@ -104,5 +107,6 @@ void wsfx_step_starting(wsfxEffectFlow_TypeDef *flow);
 void wsfx_step_constantColor(wsfxEffectFlow_TypeDef *flow);
 void wsfx_step_warp(wsfxEffectFlow_TypeDef *flow);
 void wsfx_step_warpHalf(wsfxEffectFlow_TypeDef *flow);
+void wsfx_step_wave(wsfxEffectFlow_TypeDef *flow);
 
 #endif /* WSFX_H_ */

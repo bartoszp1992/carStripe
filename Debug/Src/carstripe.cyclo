@@ -1,4 +1,4 @@
-../Src/carstripe.c:43:6:carStripe	20
-../Src/carstripe.c:217:6:HAL_GPIO_EXTI_Rising_Callback	1
-../Src/carstripe.c:221:6:HAL_GPIO_EXTI_Falling_Callback	1
-../Src/carstripe.c:225:6:carStripeResetWaitingForCommand	3
+../Src/carstripe.c:43:6:carStripe	21
+../Src/carstripe.c:228:6:HAL_GPIO_EXTI_Rising_Callback	1
+../Src/carstripe.c:232:6:HAL_GPIO_EXTI_Falling_Callback	1
+../Src/carstripe.c:236:6:carStripeResetWaitingForCommand	3

@@ -149,6 +149,10 @@ void wsfx_setSaturation(wsfxEffect_TypeDef *effect, uint8_t saturation) {
 	effect->flow.saturation = saturation;
 }
 
+void wsfx_setShift(wsfxEffect_TypeDef *effect, uint16_t shift) {
+	effect->flow.shift = shift;
+}
+
 void wsfx_setColorSecond(wsfxEffect_TypeDef *effect, uint16_t hue) {
 	effect->flow.hue2 = hue;
 }
@@ -239,7 +243,7 @@ void wsfx_step_movingLight(wsfxEffectFlow_TypeDef *flow) {
 		if (currentLED < flow->endLED)
 			WS2812B_setLedColorHSV(flow->stripe, currentLED + 1, flow->hue,
 					flow->saturation, flow->value / 2);
-		if (currentLED +2 < flow->endLED + 1)
+		if (currentLED + 2 < flow->endLED + 1)
 			WS2812B_setLedColorHSV(flow->stripe, currentLED + 2, flow->hue,
 					flow->saturation, flow->value / 4);
 	}
@@ -273,7 +277,7 @@ void wsfx_step_pulse(wsfxEffectFlow_TypeDef *flow) {
 	else if (flow->counter == 5) {
 		actualValue = flow->value;
 	} else {
-		actualValue = flow->value / (flow->counter *2);
+		actualValue = flow->value / (flow->counter * 2);
 	}
 
 	_groupAction(flow->stripe, flow->beginLED, flow->endLED, flow->hue,
@@ -442,13 +446,12 @@ void wsfx_step_warpHalf(wsfxEffectFlow_TypeDef *flow) {
 
 	int leds = flow->endLED - flow->beginLED + 1;
 
-	flow->steps = (leds) / 2 /2;
+	flow->steps = (leds) / 2 / 2;
 
 	int currentLED1, currentLED2;
 
 	_groupTurnOff(flow->stripe, flow->beginLED, flow->beginLED + flow->steps);
 	_groupTurnOff(flow->stripe, flow->endLED - flow->steps, flow->endLED);
-
 
 	currentLED1 = flow->beginLED + flow->counter;
 	currentLED2 = flow->endLED - flow->counter;
@@ -457,6 +460,21 @@ void wsfx_step_warpHalf(wsfxEffectFlow_TypeDef *flow) {
 			flow->saturation, flow->value / 4);
 	WS2812B_setLedColorHSV(flow->stripe, currentLED2, flow->hue,
 			flow->saturation, flow->value / 4);
+
+	WS2812B_Refresh(flow->stripe);
+
+}
+
+void wsfx_step_wave(wsfxEffectFlow_TypeDef *flow) {
+
+	flow->steps = 360;
+
+	int baseColor = flow->counter;
+
+	for (int led = 0; led < flow->endLED - flow->beginLED; led++) {
+		WS2812B_setLedColorHSV(flow->stripe, led, (baseColor+(led * flow->shift))%359,
+				flow->saturation, flow->value);
+	}
 
 	WS2812B_Refresh(flow->stripe);
 

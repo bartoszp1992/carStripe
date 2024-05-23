@@ -21,7 +21,7 @@ wsfxEffect_TypeDef fxPulse;
 wsfxEffect_TypeDef fxBlinker;
 wsfxEffect_TypeDef fxStarting;
 wsfxEffect_TypeDef fxWarp;
-wsfxEffect_TypeDef fxHueChange;
+wsfxEffect_TypeDef fxWave;
 
 radio433_receiverTypeDef radio;
 radio433_transmitterTypeDef remote;
@@ -45,12 +45,13 @@ void carStripe(void) {
 	//initialize LED stripe
 	WS2812B_init(&stripe1, &hspi1, CAR_STRIPE_LAST_LED);
 
-	wsfx_init(&fxHueChange, &stripe1, 0, CAR_STRIPE_LAST_LED,
-			wsfx_step_hueChange);
-	wsfx_setValue(&fxHueChange, 255);
-	wsfx_setPrescaler(&fxHueChange, 1);
-	wsfx_setRepeat(&fxHueChange, WSFX_REPEAT_MODE_ON);
-	wsfx_setSaturation(&fxHueChange, 230);
+	wsfx_init(&fxWave, &stripe1, 0, CAR_STRIPE_LAST_LED,
+			wsfx_step_wave);
+	wsfx_setValue(&fxWave, 255);
+	wsfx_setPrescaler(&fxWave, 1);
+	wsfx_setRepeat(&fxWave, WSFX_REPEAT_MODE_ON);
+	wsfx_setSaturation(&fxWave, 255);
+	wsfx_setShift(&fxWave, 4);
 
 	wsfx_init(&fxKnight, &stripe1, 41, 55, wsfx_step_movingLight);
 	wsfx_setColor(&fxKnight, 0);
@@ -63,7 +64,7 @@ void carStripe(void) {
 	wsfx_setValue(&fxGlow, 255);
 	wsfx_setPrescaler(&fxGlow, 1);
 	wsfx_setRepeat(&fxGlow, WSFX_REPEAT_MODE_ON);
-	wsfx_setSaturation(&fxGlow, 220);
+	wsfx_setSaturation(&fxGlow, 255);
 
 	wsfx_init(&fxPulse, &stripe1, 0, CAR_STRIPE_LAST_LED, wsfx_step_pulse);
 	wsfx_setValue(&fxPulse, 255);
@@ -114,9 +115,19 @@ void carStripe(void) {
 	//	radio433_transmitterAttachGPIOandTimer(&transmitter, RADIO_TX_GPIO_Port,
 	//	RADIO_TX_Pin, &htim17);
 
+//	carStripeEffectNumber = 5;
+
 	while (1) {
 
+
+
 		carStripeButtonData = radio433_receiverReadData(&radio, &remote);
+
+		if(carStripeButtonData != 0){
+			HAL_GPIO_WritePin(LED_HB_GPIO_Port, LED_HB_Pin, GPIO_PIN_SET);
+		}else{
+			HAL_GPIO_WritePin(LED_HB_GPIO_Port, LED_HB_Pin, GPIO_PIN_RESET);
+		}
 
 		if (carStripeButtonData == RADIO433_BARTS_BUTTON_D) {
 
@@ -129,7 +140,7 @@ void carStripe(void) {
 
 //			carStripeButtonReadPrescaler = 1;
 
-			carStripeColor += 4;
+			carStripeColor += 2;
 
 			if (carStripeColor >= 360)
 				carStripeColor = 0;
@@ -185,10 +196,10 @@ void carStripe(void) {
 			carStripeCurrentFx = &fxWarp;
 			break;
 		case 4:
-			carStripeCurrentFx = &fxGlow;
+			carStripeCurrentFx = &fxWave;
 			break;
 		case 5:
-			carStripeCurrentFx = &fxHueChange;
+			carStripeCurrentFx = &fxGlow;
 			break;
 		case 6:
 			carStripeCurrentFx = &fxBlinker;
@@ -209,7 +220,7 @@ void carStripe(void) {
 		carStripeButtonData = 0;
 
 		wsfx_increment(7, &fxKnight, &fxGlow, &fxPulse, &fxBlinker, &fxStarting,
-				&fxWarp, &fxHueChange);
+				&fxWarp, &fxWave);
 
 	}
 

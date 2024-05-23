@@ -62,6 +62,8 @@ void Error_Handler(void);
 #define RADIO_RX_Pin GPIO_PIN_2
 #define RADIO_RX_GPIO_Port GPIOB
 #define RADIO_RX_EXTI_IRQn EXTI2_3_IRQn
+#define LED_HB_Pin GPIO_PIN_8
+#define LED_HB_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
 
